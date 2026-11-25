@@ -1,5 +1,7 @@
 
 import itertools
+from functools import lru_cache
+
 
 def round_robin_groups(r, a):
     """Group sizes when a live workers are spread over min(r, a) partitions by round robin."""
@@ -144,3 +146,43 @@ def B_expected_rounds_recursive(schedules, N, P):
 
     return E(0, (1 << k) - 1)
 
+
+def targets_this_round(schedules, done, live):
+    """The partition each live worker takes: the first one on its list that isn't done.
+
+    >>> targets_this_round([[1, 2, 3], [3, 2, 1]], done=0b001, live=[0, 1])   # partition 1 done
+    [2, 3]
+    """
+    return [next(p for p in schedules[w] if not done >> (p - 1) & 1) for w in live]
+
+
+def B_worst_rounds(schedules, N, f):
+    """Most rounds B can take with exactly f failures, over every 'which' and 'when'.
+
+    >>> B_worst_rounds(pair_schedules(5, 2), 5, 1)       # same as opposite ends: fail in round 1
+    5
+    >>> B_worst_rounds(pair_schedules(12, 6), 12, 4)     # e.g. w1, w2, w3, w5 fail in round 1
+    8
+    """
+    k = len(schedules)
+    all_done = (1 << N) - 1
+
+    @lru_cache(maxsize=None)
+    def W(done, alive, f_left):
+        if done == all_done:
+            return 0
+        live = [w for w in range(k) if alive >> w & 1]
+        targets = targets_this_round(schedules, done, live)
+        worst_next = 0
+        for x in range(min(f_left, len(live) - 1) + 1):          # how many fail this round
+            for failed in itertools.combinations(range(len(live)), x):   # which ones
+                new_done, new_alive = done, alive
+                for i, w in enumerate(live):
+                    if i in failed:
+                        new_alive &= ~(1 << w)                    # worker w is gone
+                    else:
+                        new_done |= 1 << (targets[i] - 1)         # its partition is finished
+                worst_next = max(worst_next, W(new_done, new_alive, f_left - x))
+        return 1 + worst_next
+
+    return W(0, (1 << k) - 1, f)
