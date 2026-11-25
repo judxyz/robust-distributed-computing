@@ -39,9 +39,9 @@ Every list contains every partition, so any single survivor finishes the job. Th
 
 ## `a_2worker_example.ipynb`: two workers, three partitions
 
-**Graph `1_expected_time.png`.** Evaluates the 3-partition expected-time formula for 1,000 values of P from 0 to 1 (no simulation). It shows the corrected formula, `P×3T + (1−P)(P×3T + (1−P)×2T) = (3 − (1−P)²)T`, and, dashed, the original formula, which ordered the failure branches incorrectly.
+**Graph `a_1_expected_time.png`.** Evaluates the 3-partition expected-time formula for 1,000 values of P from 0 to 1 (no simulation). It shows the corrected formula, `P×3T + (1−P)(P×3T + (1−P)×2T) = (3 − (1−P)²)T`, and, dashed, the original formula, which ordered the failure branches incorrectly.
 
-**Graph `2_monte_carlo.png`.** A Monte Carlo simulation of the schedule itself:
+**Graph `a_2_monte_carlo.png`.** A Monte Carlo simulation of the schedule itself:
 
 - `simulate_run` keeps two pointers, `left` (W1) and `right` (W2), which move inward each round unless that worker has failed. Failures are checked only while both workers are alive (the last-survivor rule).
 - The loop runs until the pointers cross; the number of rounds is the completion time. No finish times are written into the code, so the simulation independently checks the formula.
