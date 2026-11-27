@@ -2,7 +2,7 @@
 import itertools
 import math
 from functools import lru_cache
-
+import math
 
 def round_robin_groups(r, a):
     """Group sizes when a live workers are spread over min(r, a) partitions by round robin."""
@@ -325,3 +325,39 @@ def B_timed_worst(schedules, N, P):
             total += prob_x_fail(len(live), P, x) * worst
         return total
     return V(0, (1 << k) - 1)
+
+
+
+def random_schedules(N, k, seed=None):
+    """Task lists where each worker has its own random order of all N partitions (any k).
+
+    >>> random_schedules(4, 2, seed=1)
+    [[4, 1, 3, 2], [4, 2, 1, 3]]
+    """
+    rng = random.Random(seed)
+    schedules = []
+    for _ in range(k):
+        order = list(range(1, N + 1))
+        rng.shuffle(order)
+        schedules.append(order)
+    return schedules
+
+
+def hybrid_schedules(N, k, seed=None):
+    """Pair schedules for the own block, then a random order through all other partitions.
+
+    >>> hybrid_schedules(8, 4, seed=1)
+    [[1, 2, 3, 4, 8, 5, 7, 6], [4, 3, 2, 1, 8, 6, 5, 7], [5, 6, 7, 8, 1, 3, 2, 4], [8, 7, 6, 5, 3, 4, 1, 2]]
+    """
+    if k % 2 != 0:
+        raise ValueError("k must be even")
+    rng = random.Random(seed)
+    blocks = split_into_blocks(N, k // 2)
+    schedules = []
+    for pair in range(k // 2):
+        own = blocks[pair]
+        for left in (True, False):
+            others = [p for p in range(1, N + 1) if p not in own]
+            rng.shuffle(others)                   # each worker gets its own random order
+            schedules.append(own_block_order(own, left) + others)
+    return schedules
