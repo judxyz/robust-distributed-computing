@@ -98,11 +98,24 @@ Notes for interpretation:
 ## `d_charts_worstcase.ipynb`: method B by total number of failures
 
 Two bar charts for method B (N = 12, k = 6, P = 0.1), with the **total number of failures f over the whole run** (0 to k − 1) on the x-axis. Each bar is labelled with P(F = f), the chance of exactly f failures.
+## `d_charts_worstcase.ipynb`: completion time by total number of failures
 
-- **`d_average_time_by_failures.png`**: E[T | F = f], the average completion time of runs with exactly f failures. `B_time_by_failure_count` runs the method-B recursion but carries, for each f, both the probability and the probability-weighted time; dividing the two gives the conditional average.
+Two bar charts for each method (N = 12, k = 6, P = 0.1), with the **total number of failures f over the whole run** (0 to k − 1) on the x-axis. Each bar is labelled with P(F = f), the chance of exactly f failures.
+
+**Method B (2 pointer):**
+
+- **`d_average_time_by_failures.png`**: E[T | F = f], the average completion time of runs with exactly f failures. `B_time_by_failure_count` runs the method-B recursion over `(done, alive)` but carries, for each f, both the probability and the probability-weighted time; dividing the two gives the conditional average.
 - **`d_worst_time_by_failures.png`**: W_B(f) from `B_worst_rounds`, the most rounds possible with exactly f failures, found by exhaustive search over how many workers fail in each round and which ones.
 
-Weighting chart 1's bars by P(F = f) gives the overall expected time. Note: f counts every failed worker, including a backup whose partition another worker finishes in the same round (a failure that costs no time). Such runs are charged the worst case for their f, so the per-f worst cases are pessimistic.
+**Method A (lower bound), same N, k and P:**
+
+- **`d_A_average_time_by_failures.png`**: `A_time_by_failure_count` does the same with method A's recursion over `(r, a)` (partitions left, live workers).
+- **`d_A_worst_time_by_failures.png`**: W_A(f) from `A_worst_rounds`, the same exhaustive search for method A. `finished_partitions` gives the number of partitions finished in a round when a given set of workers fails.
+
+Weighting the average-time bars by P(F = f) gives the overall expected time (2.9080 rounds for A, 3.0413 for B).
+
+Counting failures: failures in the round where the job finishes are not counted (`count_final_round=False`), because they cannot change the completion time. Without this, harmless last-round failures would push runs into higher-f bars, which would then be charged a worse worst case. A backup that fails in an earlier round while its partner finishes the partition is still counted, so the per-f worst cases are still slightly pessimistic.
+
 
 ## `e_completion_time_distribution.ipynb`: completion-time distribution
 
@@ -114,3 +127,29 @@ The exact probability of each completion time for both methods (N = 12, k = 6, P
 - **Graph `e_completion_time_distribution.png`:** step chart of P(T ≤ t) against t for both methods. Method B loses mostly in the middle (3–6 rounds), where duplicated visits cost time; from 8 rounds on the two curves coincide, because those runs have lost almost all their workers.
 
 Considerations: exact only for small cases (simulate otherwise, with confidence bands); rounds are whole numbers, so percentiles move in steps and can tie even when probabilities differ; the tail is shaped by the model assumptions, especially the last-survivor rule, which caps the time at N.
+
+
+## `g_random_hybrid_comparison.ipynb`: random and hybrid schedules
+
+Compares four designs. All schedule-based designs use B's run-time rule: each live worker takes the first partition on its list that is not done.
+
+- **A**: full monitoring (benchmark).
+- **B**: `pair_schedules`.
+- **Random**: `random_schedules(N, k, seed)`. Each worker has its own random order of all N partitions.
+- **Hybrid**: `hybrid_schedules(N, k, seed)`. The pair schedule on the own block (two pointers), then each worker's own random order through all other partitions. Only the visiting phase is different from B.
+
+Each random design is drawn once before the run, so it is still a pre-schedule. The exact recursions then compute three measures:
+
+- expected rounds, from `B_time_distribution`;
+- the timed worst case, from `B_timed_worst`;
+- the 95th percentile, from `percentile_rounds`.
+
+Random and hybrid values are means over 10 seeds (`SEEDS`). Trial cases: N = 2k with k = 4, 6, 8, and P = 0.1 and 0.2. k = 10 takes several minutes per design and is left out.
+
+- **Three tables** (expected rounds, timed worst case, 95th percentile), with each design's gap to A in %.
+- **Graph `g_schedule_gap.png`:** the expected-rounds gap to A for B, random and hybrid in each trial case.
+
+Notes:
+
+- The 95th percentiles of random and hybrid are means over seeds, so they can be fractions.
+- A's 95th percentile for N = 8, k = 4 is 5 because P(T ≤ 4) = 0.9496, just under 0.95.
